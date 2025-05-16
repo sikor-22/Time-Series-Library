@@ -20,7 +20,7 @@ class Exp_Classification(Exp_Basic):
     def _build_model(self):
         # model input depends on data
         train_data, train_loader = self._get_data(flag='TRAIN')
-        test_data, test_loader = self._get_data(flag='TEST')
+        test_data, test_loader = self._get_data(flag='validation')
         self.args.seq_len = max(train_data.max_seq_len, test_data.max_seq_len)
         self.args.pred_len = 0
         self.args.enc_in = train_data.feature_df.shape[1]

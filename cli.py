@@ -1,22 +1,5 @@
 import argparse
-import os
-import torch
-import torch.backends
-from exp.exp_long_term_forecasting import Exp_Long_Term_Forecast
-from exp.exp_imputation import Exp_Imputation
-from exp.exp_short_term_forecasting import Exp_Short_Term_Forecast
-from exp.exp_anomaly_detection import Exp_Anomaly_Detection
-from exp.exp_classification import Exp_Classification
-from utils.print_args import print_args
-import random
-import numpy as np
-
-if __name__ == '__main__':
-    fix_seed = 2021
-    random.seed(fix_seed)
-    torch.manual_seed(fix_seed)
-    np.random.seed(fix_seed)
-
+def get_args():
     parser = argparse.ArgumentParser(description='TimesNet')
 
     # basic config
@@ -26,8 +9,6 @@ if __name__ == '__main__':
     parser.add_argument('--model_id', type=str, required=True, default='test', help='model id')
     parser.add_argument('--model', type=str, required=True, default='Autoformer',
                         help='model name, options: [Autoformer, Transformer, TimesNet]')
-    parser.add_argument('--sensor', type=str, default="Acc_x", help="Data from which sensor to load (only for SHL dataset)")
-    parser.add_argument('--sensor_location', type=str, default="Hips", help="Data from which location to load (only for SHL dataset)")
 
     # data loader
     parser.add_argument('--data', type=str, required=True, default='ETTh1', help='dataset type')
@@ -39,6 +20,9 @@ if __name__ == '__main__':
     parser.add_argument('--freq', type=str, default='h',
                         help='freq for time features encoding, options:[s:secondly, t:minutely, h:hourly, d:daily, b:business days, w:weekly, m:monthly], you can also use more detailed freq like 15min or 3h')
     parser.add_argument('--checkpoints', type=str, default='./checkpoints/', help='location of model checkpoints')
+
+    parser.add_argument('--sensor', type=str, default="Acc_x", help="Data from which sensor to load (only for SHL dataset)")
+    parser.add_argument('--sensor_location', type=str, default="Hips", help="Data from which location to load (only for SHL dataset)")
 
     # forecasting task
     parser.add_argument('--seq_len', type=int, default=96, help='input sequence length')
@@ -143,99 +127,4 @@ if __name__ == '__main__':
     parser.add_argument('--patch_len', type=int, default=16, help='patch length')
 
     args = parser.parse_args()
-    if torch.cuda.is_available() and args.use_gpu:
-        args.device = torch.device('cuda:{}'.format(args.gpu))
-        print('Using GPU')
-    else:
-        if hasattr(torch.backends, "mps"):
-            args.device = torch.device("mps") if torch.backends.mps.is_available() else torch.device("cpu")
-        else:
-            args.device = torch.device("cpu")
-        print('Using cpu or mps')
-
-    if args.use_gpu and args.use_multi_gpu:
-        args.devices = args.devices.replace(' ', '')
-        device_ids = args.devices.split(',')
-        args.device_ids = [int(id_) for id_ in device_ids]
-        args.gpu = args.device_ids[0]
-
-    print('Args in experiment:')
-    print_args(args)
-
-    if args.task_name == 'long_term_forecast':
-        Exp = Exp_Long_Term_Forecast
-    elif args.task_name == 'short_term_forecast':
-        Exp = Exp_Short_Term_Forecast
-    elif args.task_name == 'imputation':
-        Exp = Exp_Imputation
-    elif args.task_name == 'anomaly_detection':
-        Exp = Exp_Anomaly_Detection
-    elif args.task_name == 'classification':
-        Exp = Exp_Classification
-    else:
-        Exp = Exp_Long_Term_Forecast
-
-    if args.is_training:
-        for ii in range(args.itr):
-            # setting record of experiments
-            exp = Exp(args)  # set experiments
-            setting = '{}_{}_{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_expand{}_dc{}_fc{}_eb{}_dt{}_{}_{}'.format(
-                args.task_name,
-                args.model_id,
-                args.model,
-                args.data,
-                args.features,
-                args.seq_len,
-                args.label_len,
-                args.pred_len,
-                args.d_model,
-                args.n_heads,
-                args.e_layers,
-                args.d_layers,
-                args.d_ff,
-                args.expand,
-                args.d_conv,
-                args.factor,
-                args.embed,
-                args.distil,
-                args.des, ii)
-
-            print('>>>>>>>start training : {}>>>>>>>>>>>>>>>>>>>>>>>>>>'.format(setting))
-            exp.train(setting)
-
-            print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
-            exp.test(setting)
-            if args.gpu_type == 'mps':
-                torch.backends.mps.empty_cache()
-            elif args.gpu_type == 'cuda':
-                torch.cuda.empty_cache()
-    else:
-        exp = Exp(args)  # set experiments
-        ii = 0
-        setting = '{}_{}_{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_expand{}_dc{}_fc{}_eb{}_dt{}_{}_{}'.format(
-            args.task_name,
-            args.model_id,
-            args.model,
-            args.data,
-            args.features,
-            args.seq_len,
-            args.label_len,
-            args.pred_len,
-            args.d_model,
-            args.n_heads,
-            args.e_layers,
-            args.d_layers,
-            args.d_ff,
-            args.expand,
-            args.d_conv,
-            args.factor,
-            args.embed,
-            args.distil,
-            args.des, ii)
-
-        print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
-        exp.test(setting, test=1)
-        if args.gpu_type == 'mps':
-            torch.backends.mps.empty_cache()
-        elif args.gpu_type == 'cuda':
-            torch.cuda.empty_cache()
+    return args
