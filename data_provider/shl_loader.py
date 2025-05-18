@@ -2,6 +2,7 @@ from torch.utils.data import Dataset
 import posixpath as path
 import numpy as np
 import pandas as pd
+from torch import unsqueeze, from_numpy, as_tensor
 
 
 class SHLloader(Dataset):
@@ -29,14 +30,15 @@ class SHLloader(Dataset):
         self.args = args
         self.root_path = root_path
         self.flag = flag
-        if flag == "TEST":
+        if flag == "TEST": # exp_classification for some reason loads validation dataset with TEST flag
             self.flag = "validation"
         if isinstance(self.flag, str):
             self.flag = self.flag.lower() # Avoid ambiguities with Train/TRAIN/train etc
         self.x_data, self.y_data = self.__load_from_file()
+        self.y_data = self.y_data - 1 # cross entropy expects 0-based indexes
         self.max_seq_len = 500
-        self.feature_df = np.zeros_like(self.x_data.T)
-        self.class_names = np.unique(self.y_data).astype(str)
+        self.feature_df = np.zeros_like(self.x_data) # exp_classification gets encoding dimensions from this attribute
+        self.class_names = np.unique(self.y_data).astype(str) # exp_classification gets target dimensions from this attribute
 
     def __load_from_file(self, sensor = None, location = None):
         '''
@@ -55,7 +57,6 @@ class SHLloader(Dataset):
             filepath = path.join(self.root_path, self.flag, location, f"{sensor}.txt")
         np_data = np.loadtxt(filepath, dtype=np.float32)
         np_data = self._preprocess_data(np_data)
-        self.x = np_data
         labelpath = path.join(self.root_path, self.flag, location, "Label.txt")
         y_data = np.loadtxt(labelpath, dtype=int)
         y_data = np.median(y_data, axis=1).astype(int)
@@ -72,4 +73,4 @@ class SHLloader(Dataset):
         return self.x_data.shape[0]
     
     def __getitem__(self, ind):
-        return self.x_data[ind], self.y_data[ind]
+        return unsqueeze(from_numpy(self.x_data[ind]), 0), as_tensor([self.y_data[ind]]) # for dimensions compatibility
